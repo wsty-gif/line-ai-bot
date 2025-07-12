@@ -1,52 +1,22 @@
 const express = require('express');
-const axios = require('axios');
+const line = require('@line/bot-sdk');
 require('dotenv').config();
 
+const config = {
+  channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
+  channelSecret: process.env.CHANNEL_SECRET,
+};
+
 const app = express();
-app.use(express.json());
 
-app.post('/webhook', async (req, res) => {
-  const event = req.body.events?.[0];
-  if (!event || event.type !== 'message' || event.message.type !== 'text') {
-    return res.sendStatus(200);
-  }
-
-  const userText = event.message.text;
-  const replyToken = event.replyToken;
-
-  try {
-    const aiRes = await axios.post('https://api.openai.com/v1/chat/completions', {
-      model: 'gpt-3.5-turbo',
-      messages: [{ role: 'user', content: userText }]
-    }, {
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    const replyText = aiRes.data.choices[0].message.content;
-
-    await axios.post('https://api.line.me/v2/bot/message/reply', {
-      replyToken,
-      messages: [{ type: 'text', text: replyText }]
-    }, {
-      headers: {
-        Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    res.sendStatus(200);
-  } catch (err) {
-    console.error('エラー:', err.message);
-    res.sendStatus(500);
-  }
+// 必須: LINEのミドルウェアを使って、署名検証も行う
+app.post('/webhook', line.middleware(config), (req, res) => {
+  console.log('✅ Webhook受信');
+  res.status(200).end(); // ← これが絶対必要！
 });
 
+// ポートをRender用に動的に取得
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
-  console.log(`サーバー起動: http://localhost:${PORT}`);
+  console.log(`🚀 サーバー起動: http://localhost:${PORT}`);
 });
-
