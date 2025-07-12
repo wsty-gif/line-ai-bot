@@ -17,7 +17,7 @@ const openai = new OpenAI({
 const client = new line.Client(config);
 const app = express();
 
-// LINEのWebhook受信はrawボディで処理（署名検証に必須）
+// ここが重要！LINE SDK署名検証のためにrawで受け取る
 app.post(
   '/webhook',
   express.raw({ type: 'application/json' }),
@@ -30,6 +30,7 @@ app.post(
           if (event.type === 'message' && event.message.type === 'text') {
             const userMessage = event.message.text;
 
+            // OpenAI Chat Completion呼び出し
             const completion = await openai.chat.completions.create({
               model: 'gpt-3.5-turbo',
               messages: [
@@ -40,7 +41,9 @@ app.post(
             });
 
             const replyText = completion.choices[0].message.content;
+            console.log('OpenAI応答:', replyText);
 
+            // LINEに返信
             await client.replyMessage(event.replyToken, {
               type: 'text',
               text: replyText,
