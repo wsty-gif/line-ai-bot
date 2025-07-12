@@ -33,6 +33,7 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
         });
 
         const replyText = completion.data.choices[0].message.content;
+        console.log('OpenAI応答:', completion.data.choices[0].message.content);
 
         // LINEに返信
         await client.replyMessage(event.replyToken, {
