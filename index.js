@@ -1,20 +1,24 @@
-const express = require('express');
-const line = require('@line/bot-sdk');
-const { Configuration, OpenAIApi } = require('openai');
-require('dotenv').config();
+import express from 'express';
+import line from '@line/bot-sdk';
+import OpenAI from 'openai';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const config = {
   channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
   channelSecret: process.env.CHANNEL_SECRET,
 };
 
-const openaiConfig = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(openaiConfig);
 
 const client = new line.Client(config);
 const app = express();
+
+app.use(express.json());  // ここが重要！
+
 
 app.post('/webhook', line.middleware(config), async (req, res) => {
   try {
@@ -23,9 +27,8 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
         if (event.type === 'message' && event.message.type === 'text') {
           const userMessage = event.message.text;
 
-          // OpenAIに問い合わせ
-          const completion = await openai.createChatCompletion({
-            model: "gpt-3.5-turbo", // 安定モデル
+          const completion = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
             messages: [
               { role: "system", content: "あなたは親切なアシスタントです。" },
               { role: "user", content: userMessage },
@@ -33,10 +36,8 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
             max_tokens: 500,
           });
 
-          const replyText = completion.data.choices[0].message.content;
-          console.log('OpenAI応答:', replyText);
+          const replyText = completion.choices[0].message.content;
 
-          // LINEに返信
           await client.replyMessage(event.replyToken, {
             type: 'text',
             text: replyText,
@@ -44,6 +45,7 @@ app.post('/webhook', line.middleware(config), async (req, res) => {
         }
       })
     );
+
     res.status(200).end();
   } catch (error) {
     console.error('Error:', error);
